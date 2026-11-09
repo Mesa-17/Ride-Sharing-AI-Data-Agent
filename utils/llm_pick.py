@@ -15,11 +15,11 @@ def pick_llm(level:str):
     """
 
     if level.lower() == "low":
-        llm = ChatAnthropic(model_name="claude-haiku-4-5", temperature=0)
+        llm = ChatAnthropic(model_name="claude-haiku-4-5")
     elif level.lower() == "medium":
-        llm = ChatAnthropic(model_name="claude-sonnet-5", temperature=0)
+        llm = ChatAnthropic(model_name="claude-sonnet-5")
     elif level.lower() == "high":
-        llm = ChatAnthropic(model_name="claude-opus-5", temperature=0)
+        llm = ChatAnthropic(model_name="claude-opus-5")
     else:
         raise ValueError(f"Unsupported level: {level}")
 

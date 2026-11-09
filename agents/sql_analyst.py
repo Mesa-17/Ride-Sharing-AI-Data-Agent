@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.llm_pick import pick_llm
 from utils.database import DatabaseUtil
-from Models.schema import AgentSchema, JudgeSchema
+from models.schema import AgentSchema, JudgeSchema
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph import StateGraph, START, END
 
@@ -74,7 +74,8 @@ def generate_sql(state: AgentSchema) -> AgentSchema:
     llm = pick_llm("medium")  # Pick the appropriate LLM based on the level of the question
 
     generated_sql_query = llm.invoke(prompt).content  # Generate the SQL query using the LLM
-
+    generated_sql_query = generated_sql_query.strip()
+    generated_sql_query = generated_sql_query.removeprefix("```sql").removeprefix("```").removesuffix("```").strip()
     state.generated_sql_query = generated_sql_query
 
     return state
