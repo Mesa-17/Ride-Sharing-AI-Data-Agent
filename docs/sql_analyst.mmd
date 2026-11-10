@@ -1,0 +1,38 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	curate_question(curate_question)
+	load_schema(load_schema)
+	generate_sql(generate_sql)
+	check_sql(check_sql)
+	judge_sql(judge_sql)
+	execute_sql(execute_sql)
+	write_answer(write_answer)
+	refuse(refuse)
+	give_up(give_up)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> curate_question;
+	check_sql -.-> generate_sql;
+	check_sql -.-> give_up;
+	check_sql -.-> judge_sql;
+	check_sql -.-> refuse;
+	curate_question --> load_schema;
+	execute_sql -.-> generate_sql;
+	execute_sql -.-> give_up;
+	execute_sql -.-> write_answer;
+	generate_sql --> check_sql;
+	judge_sql -.-> execute_sql;
+	judge_sql -.-> generate_sql;
+	judge_sql -.-> give_up;
+	judge_sql -.-> refuse;
+	load_schema --> generate_sql;
+	give_up --> __end__;
+	refuse --> __end__;
+	write_answer --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

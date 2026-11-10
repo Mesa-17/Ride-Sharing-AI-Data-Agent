@@ -1,26 +1,17 @@
-from langchain_anthropic import ChatAnthropic
-from dotenv import load_dotenv
+"""Model tiering: cheap, fast models for wording; stronger models for SQL and judging."""
+from functools import lru_cache
 
-load_dotenv()
+import config
 
-def pick_llm(level:str):
-    """
-    Picks the appropriate LLM based on the level of the question
 
-    args: 
-        level(str): the level of question, can be easy, medium or hard
-    
-    returns:
-        str: The name of the LLM to be used 
-    """
+@lru_cache(maxsize=None)
+def pick_llm(level: str):
+    """Return a chat model for a tier: 'low', 'medium' or 'high'. Models are set in .env."""
+    from langchain_anthropic import ChatAnthropic  # imported lazily so tests run without an API key
 
-    if level.lower() == "low":
-        llm = ChatAnthropic(model_name="claude-haiku-4-5")
-    elif level.lower() == "medium":
-        llm = ChatAnthropic(model_name="claude-sonnet-5")
-    elif level.lower() == "high":
-        llm = ChatAnthropic(model_name="claude-opus-5")
-    else:
-        raise ValueError(f"Unsupported level: {level}")
-
-    return llm
+    models = {"low": config.MODEL_LOW, "medium": config.MODEL_MEDIUM, "high": config.MODEL_HIGH}
+    try:
+        model = models[level.lower()]
+    except KeyError:
+        raise ValueError(f"Unsupported level: {level!r}. Use low, medium or high.") from None
+    return ChatAnthropic(model_name=model, temperature=0, max_retries=2, timeout=60)

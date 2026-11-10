@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ride-Sharing Data Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Same layout as the project card animation (question bubble, step checklist, answer card, ask box), drawn plainly on a dark page. */
+:root{
+  --bg:#0B0B0C; --panel:#111214; --card:#16171A; --text:#ECEDEF; --grey:#9EA1A8; --faint:#6E727A; --line:#26282D; --bubble:#202226;
+  --link:#ECEDEF; --ok:#2EE6A6; --warn:#FFB000; --bad:#FF7A6B; --bar:#ECEDEF;
+  --sans:"Geist",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--text);font:16px/1.55 var(--sans)}
+.page{max-width:900px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+a{color:var(--link)}
+.top{display:flex;justify-content:space-between;font-size:14px}
+.top a{text-decoration:none;color:var(--grey)}
+.top a:hover{color:var(--text)}
+h1{margin:36px 0 6px;font-size:28px;line-height:1.25;font-weight:600;letter-spacing:-.01em}
+.intro{margin:0;color:var(--grey);max-width:66ch}
+.note{margin:12px 0 0;font-size:13.5px;color:var(--faint)}
+
+/* the "app" panel */
+.app{margin-top:28px;padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.bubble{margin-left:auto;width:fit-content;max-width:min(80%,520px);padding:10px 14px;border-radius:14px 14px 4px 14px;background:var(--bubble);font-size:15.5px}
+.cards{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:16px}
+.card{padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--card);min-width:0}
+.ch{margin-bottom:10px;font:13px var(--mono);color:var(--grey)}
+.ch.ok{color:var(--ok)} .ch.bad{color:var(--bad)}
+
+.steps{margin:0;padding:0;list-style:none}
+.steps li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:4px 0;font-size:14.5px}
+.steps li.sep{display:block;margin:6px 0 2px;padding:0;font-size:12.5px;color:var(--warn)}
+.ic{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);font-size:11px;font-weight:700;line-height:1;color:#fff;transform:translateY(3px)}
+.ic.ok{background:var(--text);border-color:var(--text);color:#0B0B0C}
+.ic.warn{border-color:var(--warn);color:var(--warn)}
+.ic.bad{background:var(--bad);border-color:var(--bad)}
+.ic.info{border-color:var(--link);color:var(--link)}
+.ic.run{border-color:var(--faint);border-top-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:translateY(3px) rotate(360deg)}}
+.sl{min-width:0}
+.sn{font-weight:600}
+.sd{margin-left:6px;color:var(--grey);overflow-wrap:anywhere}
+.sd.warn{color:var(--warn)} .sd.bad{color:var(--bad)}
+.v.ok{color:var(--ok)} .v.warn{color:var(--warn)} .v.bad{color:var(--bad)}
+.ms{font-size:12.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+.at{font:13px var(--mono);color:var(--grey);margin-bottom:10px}
+.bars{display:grid;gap:8px;margin-bottom:12px}
+.bars div{display:grid;grid-template-columns:minmax(0,9em) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:14.5px}
+.bars span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bars i{display:block;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bars i b{display:block;height:100%;background:var(--bar)}
+.bars em{font-style:normal;font-variant-numeric:tabular-nums;color:var(--grey)}
+#atext{margin:0;font-size:15.5px;line-height:1.55}
+.af{margin-top:10px;font-size:13px;color:var(--faint)}
+.waiting{color:var(--faint);font-size:14.5px}
+
+.askbar{display:flex;align-items:center;gap:10px;margin-top:28px;padding:6px 6px 6px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.askbar:focus-within{border-color:#4A4D54}
+/* a thin light that runs around the search bar; faster and green while the agent is working */
+@property --a{syntax:'<angle>';initial-value:0deg;inherits:false}
+.askbar{position:relative}
+.askbar::before{content:"";position:absolute;inset:-1px;padding:1px;border-radius:inherit;pointer-events:none;
+  background:conic-gradient(from var(--a),transparent 0deg 250deg,rgba(236,237,239,.15) 290deg,rgba(236,237,239,.85) 340deg,transparent 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+  animation:runlight 5s linear infinite}
+.askbar.busy::before{animation-duration:1.4s;background:conic-gradient(from var(--a),transparent 0deg 220deg,rgba(46,230,166,.2) 280deg,rgba(46,230,166,.95) 340deg,transparent 360deg)}
+@keyframes runlight{to{--a:360deg}}
+.plus{color:var(--faint);font-size:20px;line-height:1}
+.askbar input{flex:1;min-width:0;padding:9px 0;border:0;outline:none;background:none;font:inherit;color:var(--text)}
+.pill{flex:none;padding:3px 9px;border:1px solid var(--line);border-radius:999px;font:12px var(--mono);color:var(--grey)}
+.send{flex:none;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:var(--text);color:#0B0B0C;cursor:pointer}
+.send svg{width:16px;height:16px}
+
+.chips{margin-top:12px;font-size:14px;color:var(--faint);display:grid;gap:4px}
+.chiprow > span{margin-right:6px}
+.chiprow > div{display:inline}
+.chip{display:inline;padding:0;border:0;background:none;color:var(--grey);text-decoration:underline;text-decoration-color:#3A3D44;text-underline-offset:3px;font:inherit;cursor:pointer;text-align:left}
+.chip:hover{color:var(--text);text-decoration-color:var(--grey)}
+.chip:not(:last-child)::after{content:"·";color:var(--grey);margin:0 8px;display:inline-block}
+.chip[aria-pressed="true"]{color:var(--text);font-weight:500;text-decoration:none}
+
+.data{margin-top:30px}
+.data h2{margin:0;font-size:16px;font-weight:600}
+.dsub{margin:2px 0 10px;font-size:14px;color:var(--grey)}
+.dt{border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.dt td{white-space:normal;color:var(--grey);vertical-align:top}
+.dt td:first-child{font-family:var(--mono);font-size:13.5px;color:var(--text);white-space:nowrap}
+.dt td.n{color:var(--text);white-space:nowrap}
+/* details below the panel */
+details{margin-top:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+summary{padding:10px 14px;cursor:pointer;font-size:14.5px;font-weight:600}
+summary small{font-weight:400;color:var(--grey);margin-left:6px}
+.tw{overflow-x:auto;border-top:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th{text-align:left;padding:7px 14px;font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+th.n,td.n{text-align:right}
+.empty{padding:12px 14px;color:var(--grey);font-size:14px}
+.sqlwrap{position:relative;border-top:1px solid var(--line)}
+.copy{position:absolute;top:8px;right:8px;padding:3px 10px;border:1px solid var(--line);border-radius:5px;background:var(--card);color:var(--grey);font:12.5px var(--sans);cursor:pointer}
+pre{margin:0;padding:12px 14px;overflow-x:auto;font:13px/1.6 var(--mono);white-space:pre;color:#C9CCD1}
+
+.how{margin-top:40px;font-size:15px;color:var(--grey);max-width:70ch}
+.how p{margin:0 0 10px}
+.how b{color:var(--text);font-weight:600}
+
+@media (max-width:700px){.cards{grid-template-columns:minmax(0,1fr)}.app{padding:12px}.pill{display:none}h1{font-size:24px;margin-top:26px}}
+@media (prefers-reduced-motion:reduce){.ic.run{animation:none}.askbar::before{animation:none;display:none}}
+</style>
+
+</head>
+<body>
+<div class="page">
+  <div class="top"><a href="https://sandeepmenon.dev">← Sandeep Menon</a><a href="https://github.com/Mesa-17/Ride-Sharing-AI-Data-Agent" target="_blank" rel="noopener">Code on GitHub</a></div>
+
+  <h1>Ride-sharing data agent</h1>
+  <p class="intro">Ask a question about a ride-sharing database (5 tables, about 61,000 rows). The agent writes the SQL, checks it, and runs it as a read-only user.</p>
+  <p class="note" id="mode-note"></p>
+
+  <section class="data">
+    <h2>The data</h2>
+    <p class="dsub">PostgreSQL · 8 Canadian cities · January 2025 to July 2026</p>
+    <div class="tw dt"><table>
+      <thead><tr><th>Table</th><th class="n">Rows</th><th>What's in it</th></tr></thead>
+      <tbody>
+        <tr><td>users</td><td class="n">10,000</td><td>riders and drivers, city, province, signup date</td></tr>
+        <tr><td>vehicles</td><td class="n">3,000</td><td>each driver's car: make, model, year</td></tr>
+        <tr><td>rides</td><td class="n">20,000</td><td>request, pickup and dropoff times, distance, fare, surge, status, cancellation reason</td></tr>
+        <tr><td>payments</td><td class="n">16,073</td><td>one per completed ride: amount, method, status (completed, failed, refunded)</td></tr>
+        <tr><td>ratings</td><td class="n">12,000</td><td>1 to 5 stars and an optional comment</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <form class="askbar" id="ask" autocomplete="off">
+    <span class="plus" aria-hidden="true">+</span>
+    <input id="q" name="q" maxlength="300" aria-label="Your question" placeholder="Ask about the data, then press Enter">
+    <span class="pill">read-only</span>
+    <button class="send" id="send" type="submit" aria-label="Ask"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+  </form>
+  <div class="chips">
+    <div class="chiprow"><span>Try:</span><div id="row-ask"></div></div>
+    <div class="chiprow"><span>Or try to break it:</span><div id="row-break"></div></div>
+  </div>
+
+  <div id="runarea" hidden>
+    <div class="app" aria-live="polite">
+      <div class="bubble" id="bubble"></div>
+      <div class="cards">
+        <div class="card">
+          <div class="ch" id="shead">Working…</div>
+          <ol class="steps" id="steps"></ol>
+        </div>
+        <div class="card">
+          <div class="ch" id="astatus"></div>
+          <div class="at" id="atitle"></div>
+          <div class="bars" id="bars"></div>
+          <p id="atext"><span class="waiting">Waiting for the agent…</span></p>
+          <div class="af" id="meta"></div>
+        </div>
+      </div>
+    </div>
+    <details id="rowsbox"><summary>All rows <small id="rcount"></small></summary><div class="tw" id="result"><div class="empty">Rows appear here after the query runs.</div></div></details>
+    <details id="sqlbox"><summary>SQL <small id="sqlattempt"></small></summary><div class="sqlwrap"><button class="copy" id="copy" type="button">Copy</button><pre id="sql">-- the generated query appears here</pre></div></details>
+  </div>
+
+  <section class="how">
+    <p><b>How it stays safe.</b> Every query is parsed first: writes, multiple statements and functions like pg_sleep are refused, and unknown tables go back to the model to fix. Then a second model checks the query answers the question. Then it runs as a database user that can only read, with a 5 second timeout.</p>
+    <p>If a check fails for a fixable reason, the agent tries again with the reason, up to 3 times.</p>
+  </section>
+</div>
+
+<script>
+// Where the agent API lives. Empty = no live agent: examples replay recorded runs.
+window.AGENT_API = window.AGENT_API || (location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
+</script>
+<script>
+(async function(){
+  window.AGENT_RECORDED = await fetch('recorded.json').then(function(r){ return r.json(); });
+})().then(function(){
+  var REC = window.AGENT_RECORDED.examples, API = window.AGENT_API.replace(/\/$/, '');
+  document.getElementById('mode-note').textContent = API ? 'Live: questions run against the real agent, up to 5 per hour.' : 'Offline: the example questions replay recorded runs.';
+  var $ = function(id){ return document.getElementById(id); };
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var LABEL = {router:'Router', curate_question:'Rewrite', load_schema:'Schema', generate_sql:'Write SQL', check_sql:'Guard', judge_sql:'Judge', execute_sql:'Run', write_answer:'Answer'};
+  var run = 0, R = null;  // R: state of the current run
+
+  // ---------- examples
+  REC.forEach(function(x){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = x.label; b.dataset.id = x.id; b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', function(){ $('q').value = x.question; ask(x.question, x); });
+    $(x.group === 'break' ? 'row-break' : 'row-ask').appendChild(b);
+  });
+  $('ask').addEventListener('submit', function(e){
+    e.preventDefault();
+    var q = $('q').value.trim(); if(!q) return;
+    var hit = REC.filter(function(x){ return x.question.toLowerCase() === q.toLowerCase(); })[0];
+    ask(q, hit || null);
+  });
+  $('copy').addEventListener('click', function(){
+    var btn = this, txt = $('sql').textContent;
+    var done = function(){ btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = 'Copy'; }, 1400); };
+    try { navigator.clipboard.writeText(txt).then(done, sel); } catch(e){ sel(); }
+    function sel(){ var r = document.createRange(); r.selectNodeContents($('sql')); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  });
+
+  // ---------- one entry point: live if possible, otherwise the recorded run
+  function ask(q, example){
+    begin(q, example ? example.id : null);
+    var my = run;
+    if(!API) return example ? replay(example, my) : notLive(my, 'This preview only replays the example questions. The live agent will answer anything.');
+    live(q, my).catch(function(err){
+      if(my !== run) return;
+      if(example) return replay(example, my);
+      notLive(my, err && err.message ? err.message : 'The live agent isn’t reachable right now. Try one of the examples.');
+    });
+  }
+
+  function live(q, my){
+    return fetch(API + '/api/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question: q})})
+      .then(function(r){
+        if(r.status === 429) return r.json().then(function(j){ throw new Error(j.error); });
+        if(!r.ok || !r.body) throw new Error('');
+        var reader = r.body.getReader(), dec = new TextDecoder(), buf = '';
+        var pump = function(){
+          return reader.read().then(function(c){
+            if(c.done || my !== run) return;
+            buf += dec.decode(c.value, {stream: true});
+            var parts = buf.split('\n\n'); buf = parts.pop();
+            parts.forEach(function(p){ if(p.indexOf('data: ') === 0) handle(JSON.parse(p.slice(6)), my); });
+            return pump();
+          });
+        };
+        return pump();
+      });
+  }
+
+  function replay(example, my){
+    var i = 0, ev = example.events;
+    (function next(){
+      if(my !== run || i >= ev.length) return;
+      var e = ev[i++], delay = reduce ? 0 : (e.type === 'step' ? e.ms : 60);
+      setTimeout(function(){ if(my === run){ handle(e, my); next(); } }, delay);
+    })();
+  }
+
+  // ---------- rendering
+  function esc(t){ return String(t).replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+  function verdict(d){
+    var m = /^(approve|passed|revise|refuse)\b(.*)$/.exec(d);
+    if(!m) return esc(d);
+    return '<span class="v ' + {approve:'ok', passed:'ok', revise:'warn', refuse:'bad'}[m[1]] + '">' + m[1] + '</span>' + esc(m[2]);
+  }
+  function secs(ms){ return ms < 1000 ? ms + ' ms' : (ms / 1000).toFixed(1) + ' s'; }
+
+  function begin(q, id){
+    run++; R = {steps: 0, retries: 0, attempt: 0, hard: null, rows: 0};
+    $('runarea').hidden = false;
+    document.querySelectorAll('.chip').forEach(function(c){ c.setAttribute('aria-pressed', c.dataset.id === id ? 'true' : 'false'); });
+    $('ask').classList.add('busy');
+    $('bubble').textContent = q;
+    $('steps').innerHTML = ''; working();
+    $('shead').className = 'ch'; $('shead').textContent = 'Working…';
+    $('astatus').className = 'ch'; $('astatus').textContent = '';
+    $('atitle').textContent = ''; $('bars').innerHTML = ''; $('meta').textContent = '';
+    $('atext').innerHTML = '<span class="waiting">Waiting for the agent…</span>';
+    $('result').innerHTML = '<div class="empty">Rows appear here after the query runs.</div>'; $('rcount').textContent = '';
+    $('sql').textContent = '-- the generated query appears here'; $('sqlattempt').textContent = '';
+    $('runarea').scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block: 'start'});
+  }
+  function working(){
+    var li = document.createElement('li'); li.id = 'working';
+    li.innerHTML = '<span class="ic run"></span><span class="sl"><span class="sd" style="margin-left:0">working…</span></span><span class="ms"></span>';
+    $('steps').appendChild(li);
+  }
+  function stopWorking(){ var w = $('working'); if(w) w.remove(); }
+
+  function handle(e, my){
+    if(my !== run) return;
+    if(e.type === 'step'){
+      stopWorking();
+      if(e.node === 'generate_sql' && e.attempt > 1){
+        var sep = document.createElement('li'); sep.className = 'sep'; sep.textContent = 'Attempt ' + e.attempt + ', with the reason above'; $('steps').appendChild(sep);
+      }
+      R.steps++; if(e.attempt) R.attempt = e.attempt;
+      if(e.state === 'warn') R.retries++;
+      if(e.state === 'bad') R.hard = LABEL[e.node] || e.node;
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="ic ' + e.state + '">' + {ok:'✓', warn:'↻', bad:'✕'}[e.state] + '</span>' +
+        '<span class="sl"><span class="sn">' + esc(LABEL[e.node] || e.node) + '</span>' + (e.detail ? '<span class="sd ' + (e.state === 'ok' ? '' : e.state) + '">' + verdict(e.detail) + '</span>' : '') + '</span>' +
+        '<span class="ms">' + secs(e.ms) + '</span>';
+      $('steps').appendChild(li);
+      if(e.state !== 'bad' && e.node !== 'write_answer') working();
+    } else if(e.type === 'sql'){
+      $('sql').textContent = e.sql; $('sqlattempt').textContent = 'attempt ' + e.attempt;
+    } else if(e.type === 'result'){
+      R.rows = e.rows.length; table(e.columns, e.rows);
+    } else if(e.type === 'answer'){
+      stopWorking(); $('ask').classList.remove('busy');
+      var ok = e.status === 'answered';
+      $('shead').className = 'ch ' + (ok ? 'ok' : 'bad');
+      $('shead').textContent = ok ? '✓ Done in ' + R.steps + ' steps' + (R.retries ? ' · ' + R.retries + (R.retries === 1 ? ' retry' : ' retries') : '')
+                                  : '✕ ' + (R.hard ? 'Stopped at ' + R.hard : 'Gave up after ' + e.attempts + ' attempts');
+      $('astatus').className = 'ch ' + (ok ? 'ok' : 'bad');
+      $('astatus').textContent = {answered:'Answer', blocked:'Refused', declined:'Declined', failed:'No answer'}[e.status] || '';
+      $('atext').textContent = e.text;
+      $('meta').textContent = ok ? e.attempts + (e.attempts === 1 ? ' attempt' : ' attempts') + ' · ' + R.rows + ' rows · ' + (e.ms / 1000).toFixed(1) + ' s'
+                                 : 'Nothing ran on the database.';
+      if(!ok) $('result').innerHTML = '<div class="empty">Nothing was sent to the database.</div>';
+    } else if(e.type === 'error'){
+      notLive(my, e.message);
+    }
+  }
+
+  function notLive(my, msg){
+    if(my !== run) return;
+    stopWorking(); $('ask').classList.remove('busy');
+    $('shead').className = 'ch'; $('shead').textContent = 'Not run';
+    $('atext').innerHTML = '<span class="waiting">' + esc(msg) + '</span>';
+  }
+
+  function nice(t){ t = String(t); return /^[a-z_]+$/.test(t) ? t.split('_').map(function(w){ return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ').replace('Paypal', 'PayPal') : t; }
+  function formatter(rows, j, name){
+    var dec = Math.max.apply(null, rows.map(function(r){ var t = String(r[j]).split('.')[1]; return t ? t.length : 0; }));
+    if(/pct|rate|avg|min/.test(name)) dec = Math.max(dec, 1);
+    return function(v){ return v == null ? '' : v.toLocaleString('en-US', {minimumFractionDigits: dec, maximumFractionDigits: dec}); };
+  }
+  function table(cols, rows){
+    var num = cols.map(function(_, j){ return rows.length && rows.every(function(r){ return typeof r[j] === 'number' || r[j] == null; }); });
+    var f = cols.map(function(c, j){ return num[j] ? formatter(rows, j, c) : function(v){ return v == null ? '' : nice(v); }; });
+    var h = '<table><thead><tr>' + cols.map(function(c, j){ return '<th class="' + (num[j] ? 'n' : '') + '">' + esc(c.replace(/_/g, ' ')) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    rows.forEach(function(r){ h += '<tr>' + r.map(function(v, j){ return '<td class="' + (num[j] ? 'n' : '') + '">' + esc(f[j](v)) + '</td>'; }).join('') + '</tr>'; });
+    $('result').innerHTML = h + '</tbody></table>';
+    $('rcount').textContent = rows.length + (rows.length === 1 ? ' row' : ' rows');
+    // answer card bars: text columns as the label, last numeric column as the value
+    var pref = cols.map(function(c, j){ return j; }).filter(function(j){ return num[j] && /pct|rate|avg|_min$|total|revenue|amount|fare/.test(cols[j]); })[0];
+    var vj = pref != null ? pref : num.lastIndexOf(true), labels = cols.map(function(_, j){ return j; }).filter(function(j){ return !num[j]; });
+    if(vj < 0 || !labels.length || rows.length < 2) return;
+    var unit = /pct|percent|rate/.test(cols[vj]) ? '%' : /_min$|minutes/.test(cols[vj]) ? ' min' : '';
+    var t = cols[vj].replace(/_pct$/, '').replace(/_min$/, '').replace(/_/g, ' ');
+    $('atitle').textContent = t.charAt(0).toUpperCase() + t.slice(1) + (unit === '%' ? ' (%)' : unit ? ' (min)' : '');
+    var top = rows.slice(0, 4), max = Math.max.apply(null, top.map(function(r){ return Math.abs(r[vj] || 0); })) || 1;
+    $('bars').innerHTML = top.map(function(r){
+      var name = labels.map(function(j){ return f[j](r[j]); }).join(' ');
+      return '<div><span>' + esc(name) + '</span><i><b style="width:' + Math.round(100 * Math.abs(r[vj] || 0) / max) + '%"></b></i><em>' + esc(f[vj](r[vj]) + unit) + '</em></div>';
+    }).join('');
+  }
+});
+</script>
+</body>
+</html>
